@@ -5,11 +5,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.env.OriginTrackedMapPropertySource;
+import org.springframework.boot.origin.OriginTrackedValue;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.MutablePropertySources;
-import org.springframework.core.env.PropertySource;
+import org.springframework.core.env.*;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -31,15 +30,16 @@ public class CurrencyServiceEndpoint {
 	// в актуатор вытащить список конфигов(без паролей)(отдельный эндпоинт)
 
 	@ReadOperation
-	public Collection<Object> getAllProperties() {
-		Map<String, Object> properties = new ConcurrentHashMap<>();
-		MutablePropertySources propertySources = environment.getPropertySources();
-		propertySources.forEach(propertySource -> {
-			if (propertySource.getName().startsWith("Config resource")) {
-				properties.put(propertySource.getName(), propertySource.getSource().toString());
+	public Map<Object, Object> getAllProperties() {
+		Map<String, Object> map = new HashMap();
+		for(Iterator it = ((AbstractEnvironment) environment).getPropertySources().iterator(); it.hasNext(); ) {
+			PropertySource propertySource = (PropertySource) it.next();
+			if (propertySource instanceof OriginTrackedMapPropertySource) {
+				map.putAll(((MapPropertySource) propertySource).getSource());
 			}
-		});
-		return properties.values().stream().map(s -> s.toString().split(",")).collect(Collectors.toList());
+		}
+		Map<Object, Object> mapa = map.entrySet().stream().collect(Collectors.toMap(e-> e.getKey(), e-> ((OriginTrackedValue) e.getValue()).getValue()));
+		return mapa;
 	}
 
 }
